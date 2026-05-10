@@ -306,8 +306,7 @@
     </div>
 
     <a-scene background="color: #000" vr-mode-ui="enabled: true" 
-             renderer="antialias: true; highRefreshRate: true; colorManagement: true;"
-             spectator-mirror>
+             renderer="antialias: true; highRefreshRate: true; colorManagement: true;">
         <a-assets id="assets-manager" timeout="30000"></a-assets>
         <a-sky id="sky-360" radius="500" rotation="0 -90 0" material="shader: flat; color: #FFF; side: back"></a-sky>
         <a-entity id="rig">
@@ -765,48 +764,10 @@
             }
         });
 
-        // === MIROIR PC LIVE PENDANT VR (caméra spectateur, ~30 fps) ===
-        AFRAME.registerComponent('spectator-mirror', {
-            init: function() {
-                this.specCamera = null;
-                this.lastRender = 0;
-            },
-            tick: function() {
-                const sceneEl = this.el;
-                if (!sceneEl.is('vr-mode')) return;
-                const renderer = sceneEl.renderer;
-                if (!renderer || !renderer.xr || !renderer.xr.isPresenting) return;
-                
-                const now = performance.now();
-                if (now - this.lastRender < 33) return;
-                this.lastRender = now;
-                
-                try {
-                    if (!this.specCamera) {
-                        this.specCamera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 2000);
-                    } else {
-                        const aspect = window.innerWidth / window.innerHeight;
-                        if (Math.abs(this.specCamera.aspect - aspect) > 0.01) {
-                            this.specCamera.aspect = aspect;
-                            this.specCamera.updateProjectionMatrix();
-                        }
-                    }
-                    
-                    const xrCamera = renderer.xr.getCamera();
-                    if (!xrCamera.cameras || xrCamera.cameras.length === 0) return;
-                    const eye = xrCamera.cameras[0];
-                    eye.getWorldPosition(this.specCamera.position);
-                    eye.getWorldQuaternion(this.specCamera.quaternion);
-                    
-                    const wasXR = renderer.xr.enabled;
-                    renderer.xr.enabled = false;
-                    renderer.render(sceneEl.object3D, this.specCamera);
-                    renderer.xr.enabled = wasXR;
-                } catch(err) {
-                    // silencieux
-                }
-            }
-        });
+        // === MIROIR PC LIVE PENDANT VR : RETIRÉ ===
+        // Une tentative précédente avec un composant spectator-mirror cassait la VR
+        // en interférant avec renderer.xr.enabled. Pour le miroir live, utiliser
+        // l'outil "Oculus Mirror" intégré à Meta Quest Link (voir explication chat).
 
         function enterVRSession() {
             if(scenes.length === 0) return alert(translations[currentLang].alert_no_image);
