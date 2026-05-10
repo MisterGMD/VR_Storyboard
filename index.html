@@ -776,113 +776,108 @@
         });
 
         // === MIROIR PC LIVE PENDANT VR (approche double-renderer) ===
-        // Activation opt-in via ?mirror=1 dans l'URL pour ne pas risquer la version stable.
         // Approche : un canvas séparé + un WebGLRenderer indépendant qui rend la même
         // scène 3D avec sa propre caméra. Le renderer A-Frame n'est PAS modifié.
-        const MIRROR_ENABLED = new URLSearchParams(location.search).has('mirror');
+        // Activation par défaut au chargement (validé fonctionnel).
 
-        if (MIRROR_ENABLED) {
-            console.log('[Miroir] Mode miroir live ACTIVÉ via ?mirror=1');
-            
-            AFRAME.registerComponent('spectator-mirror-v2', {
-                init: function() {
-                    // 1. Création du canvas dédié
-                    this.specCanvas = document.createElement('canvas');
-                    this.specCanvas.id = 'spectator-canvas';
-                    document.body.appendChild(this.specCanvas);
-                    
-                    // 2. Renderer indépendant (contexte WebGL séparé du XR)
-                    try {
-                        this.specRenderer = new THREE.WebGLRenderer({
-                            canvas: this.specCanvas,
-                            antialias: true,
-                            alpha: false
-                        });
-                        this.specRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                        this.specRenderer.setSize(window.innerWidth, window.innerHeight, false);
-                        this.specRenderer.outputColorSpace = THREE.SRGBColorSpace;
-                    } catch(err) {
-                        console.error('[Miroir] Impossible de créer le renderer secondaire:', err);
-                        this.disabled = true;
-                        return;
-                    }
-                    
-                    // 3. Caméra spectateur (suivra la position de la tête)
-                    this.specCamera = new THREE.PerspectiveCamera(
-                        80, window.innerWidth / window.innerHeight, 0.1, 2000
-                    );
-                    
-                    this.lastRender = 0;
-                    
-                    // 4. Gestion du redimensionnement
-                    this.onResize = () => {
-                        if (this.specRenderer) {
-                            this.specRenderer.setSize(window.innerWidth, window.innerHeight, false);
-                            this.specCamera.aspect = window.innerWidth / window.innerHeight;
-                            this.specCamera.updateProjectionMatrix();
-                        }
-                    };
-                    window.addEventListener('resize', this.onResize);
-                    
-                    // 5. Activation/désactivation à l'entrée/sortie VR
-                    this.el.addEventListener('enter-vr', () => {
-                        document.body.classList.add('mirror-active');
-                    });
-                    this.el.addEventListener('exit-vr', () => {
-                        document.body.classList.remove('mirror-active');
-                    });
-                },
+        AFRAME.registerComponent('spectator-mirror-v2', {
+            init: function() {
+                // 1. Création du canvas dédié
+                this.specCanvas = document.createElement('canvas');
+                this.specCanvas.id = 'spectator-canvas';
+                document.body.appendChild(this.specCanvas);
                 
-                tick: function() {
-                    if (this.disabled) return;
-                    const sceneEl = this.el;
-                    if (!sceneEl.is('vr-mode')) return;
-                    
-                    // Throttle à ~30 fps pour économiser le GPU
-                    const now = performance.now();
-                    if (now - this.lastRender < 33) return;
-                    this.lastRender = now;
-                    
-                    const aRenderer = sceneEl.renderer;
-                    if (!aRenderer || !aRenderer.xr || !aRenderer.xr.isPresenting) return;
-                    
-                    try {
-                        // Récupérer la position de l'œil gauche du casque (sans le modifier)
-                        const xrCam = aRenderer.xr.getCamera();
-                        if (!xrCam.cameras || xrCam.cameras.length === 0) return;
-                        const eye = xrCam.cameras[0];
-                        
-                        // Synchroniser la caméra spectateur sur la tête
-                        eye.getWorldPosition(this.specCamera.position);
-                        eye.getWorldQuaternion(this.specCamera.quaternion);
-                        
-                        // Rendu indépendant sur le canvas spectateur
-                        // (n'affecte PAS le renderer A-Frame, contexte GL séparé)
-                        this.specRenderer.render(sceneEl.object3D, this.specCamera);
-                    } catch(err) {
-                        // Silencieux pour ne pas spammer
-                    }
-                },
-                
-                remove: function() {
-                    window.removeEventListener('resize', this.onResize);
-                    if (this.specRenderer) {
-                        this.specRenderer.dispose();
-                    }
-                    if (this.specCanvas && this.specCanvas.parentNode) {
-                        this.specCanvas.parentNode.removeChild(this.specCanvas);
-                    }
+                // 2. Renderer indépendant (contexte WebGL séparé du XR)
+                try {
+                    this.specRenderer = new THREE.WebGLRenderer({
+                        canvas: this.specCanvas,
+                        antialias: true,
+                        alpha: false
+                    });
+                    this.specRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    this.specRenderer.setSize(window.innerWidth, window.innerHeight, false);
+                    this.specRenderer.outputColorSpace = THREE.SRGBColorSpace;
+                } catch(err) {
+                    console.error('[Miroir] Impossible de créer le renderer secondaire:', err);
+                    this.disabled = true;
+                    return;
                 }
-            });
-            
-            // Attacher le composant à la scène A-Frame une fois prête
-            if (sceneEl.hasLoaded) {
-                sceneEl.setAttribute('spectator-mirror-v2', '');
-            } else {
-                sceneEl.addEventListener('loaded', () => {
-                    sceneEl.setAttribute('spectator-mirror-v2', '');
+                
+                // 3. Caméra spectateur (suivra la position de la tête)
+                this.specCamera = new THREE.PerspectiveCamera(
+                    80, window.innerWidth / window.innerHeight, 0.1, 2000
+                );
+                
+                this.lastRender = 0;
+                
+                // 4. Gestion du redimensionnement
+                this.onResize = () => {
+                    if (this.specRenderer) {
+                        this.specRenderer.setSize(window.innerWidth, window.innerHeight, false);
+                        this.specCamera.aspect = window.innerWidth / window.innerHeight;
+                        this.specCamera.updateProjectionMatrix();
+                    }
+                };
+                window.addEventListener('resize', this.onResize);
+                
+                // 5. Activation/désactivation à l'entrée/sortie VR
+                this.el.addEventListener('enter-vr', () => {
+                    document.body.classList.add('mirror-active');
                 });
+                this.el.addEventListener('exit-vr', () => {
+                    document.body.classList.remove('mirror-active');
+                });
+            },
+            
+            tick: function() {
+                if (this.disabled) return;
+                const sceneEl = this.el;
+                if (!sceneEl.is('vr-mode')) return;
+                
+                // Throttle à ~30 fps pour économiser le GPU
+                const now = performance.now();
+                if (now - this.lastRender < 33) return;
+                this.lastRender = now;
+                
+                const aRenderer = sceneEl.renderer;
+                if (!aRenderer || !aRenderer.xr || !aRenderer.xr.isPresenting) return;
+                
+                try {
+                    // Récupérer la position de l'œil gauche du casque (sans le modifier)
+                    const xrCam = aRenderer.xr.getCamera();
+                    if (!xrCam.cameras || xrCam.cameras.length === 0) return;
+                    const eye = xrCam.cameras[0];
+                    
+                    // Synchroniser la caméra spectateur sur la tête
+                    eye.getWorldPosition(this.specCamera.position);
+                    eye.getWorldQuaternion(this.specCamera.quaternion);
+                    
+                    // Rendu indépendant sur le canvas spectateur
+                    // (n'affecte PAS le renderer A-Frame, contexte GL séparé)
+                    this.specRenderer.render(sceneEl.object3D, this.specCamera);
+                } catch(err) {
+                    // Silencieux pour ne pas spammer
+                }
+            },
+            
+            remove: function() {
+                window.removeEventListener('resize', this.onResize);
+                if (this.specRenderer) {
+                    this.specRenderer.dispose();
+                }
+                if (this.specCanvas && this.specCanvas.parentNode) {
+                    this.specCanvas.parentNode.removeChild(this.specCanvas);
+                }
             }
+        });
+        
+        // Attacher le composant à la scène A-Frame une fois prête
+        if (sceneEl.hasLoaded) {
+            sceneEl.setAttribute('spectator-mirror-v2', '');
+        } else {
+            sceneEl.addEventListener('loaded', () => {
+                sceneEl.setAttribute('spectator-mirror-v2', '');
+            });
         }
 
         function enterVRSession() {
