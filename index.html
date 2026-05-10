@@ -4,178 +4,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualiseur de maquette XR</title>
-    <!-- A-Frame 1.5.0 -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     
     <style>
-        body { 
-            margin: 0; 
-            font-family: 'Segoe UI', sans-serif; 
-            background-color: #000; 
-            color: #eee;
-            overflow: hidden;
-        }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #000; color: #eee; overflow: hidden; }
         
-        /* --- Interface Storyboard (contrôle PC uniquement) --- */
         #ui-layer {
-            position: fixed;
-            top: 0; left: 0; 
+            position: fixed; top: 0; left: 0; 
             width: 100vw; height: 100vh;
             z-index: 100;
-            display: flex;
-            flex-direction: column;
-            padding: 30px;
-            box-sizing: border-box;
-            background: #111; 
-            overflow-y: auto;
+            display: flex; flex-direction: column;
+            padding: 30px; box-sizing: border-box;
+            background: #111; overflow-y: auto;
             transition: opacity 0.5s ease, visibility 0.5s;
         }
 
-        /* Le storyboard est masqué quand on entre en VR OU en mode aperçu PC */
         body.in-vr #ui-layer,
         body.preview-mode #ui-layer { 
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
+            opacity: 0; visibility: hidden; pointer-events: none;
         }
 
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px; padding-bottom: 20px;
             border-bottom: 1px solid #333;
-            flex-wrap: wrap;
-            gap: 12px;
+            flex-wrap: wrap; gap: 12px;
         }
 
         h1 { font-size: 1.5rem; margin: 0; color: #4CC3D9; font-weight: 300; }
 
-        .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+        .header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
         select, .action-btn {
-            background: #222;
-            color: #ccc;
-            border: 1px solid #444;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            outline: none;
-            font-size: 0.85rem;
-            transition: all 0.2s;
+            background: #222; color: #ccc;
+            border: 1px solid #444; padding: 8px 12px;
+            border-radius: 4px; cursor: pointer; outline: none;
+            font-size: 0.85rem; transition: all 0.2s;
         }
-
         select:hover, .action-btn:hover { border-color: #4CC3D9; background: #2a2a2a; }
         .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
         .config-btn { border-color: #f39c12; color: #f39c12; }
         .config-btn:hover:not(:disabled) { background: #f39c12; color: white; }
 
         .vr-btn {
-            background: #4CC3D9;
-            color: #000;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-weight: bold;
-            cursor: pointer;
+            background: #4CC3D9; color: #000;
+            border: none; border-radius: 4px;
+            padding: 10px 20px; font-weight: bold; cursor: pointer;
         }
         .vr-btn:hover { transform: scale(1.05); background: #63e2f9; }
 
-        /* Indicateur de progression export */
         #export-progress {
-            display: none;
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1a1a1a;
-            border: 2px solid #4CC3D9;
-            padding: 30px 40px;
-            border-radius: 12px;
-            z-index: 9999;
-            text-align: center;
-            min-width: 300px;
+            display: none; position: fixed;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #1a1a1a; border: 2px solid #4CC3D9;
+            padding: 30px 40px; border-radius: 12px;
+            z-index: 9999; text-align: center; min-width: 300px;
         }
         #export-progress.active { display: block; }
         #export-progress .progress-text { color: #4CC3D9; margin-bottom: 15px; font-size: 1.1rem; }
-        #export-progress .progress-bar {
-            width: 100%; height: 8px;
-            background: #333; border-radius: 4px; overflow: hidden;
-        }
-        #export-progress .progress-fill {
-            height: 100%; background: #4CC3D9;
-            width: 0%; transition: width 0.3s;
-        }
+        #export-progress .progress-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+        #export-progress .progress-fill { height: 100%; background: #4CC3D9; width: 0%; transition: width 0.3s; }
 
-        /* Grille des vignettes */
-        #scene-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: flex-start;
-        }
+        #scene-grid { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
 
         .scene-card {
-            width: 180px;
-            background: #222;
-            border: 2px solid #333;
-            border-radius: 8px;
-            padding: 10px;
-            cursor: grab;
+            width: 180px; background: #222;
+            border: 2px solid #333; border-radius: 8px;
+            padding: 10px; cursor: grab;
             position: relative;
-            transition: border-color 0.2s;
-            user-select: none;
-            min-height: 140px;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+            user-select: none; min-height: 140px;
+            touch-action: none;
+        }
+        .scene-card:hover { border-color: #4CC3D9; }
+        .scene-card.active { border-color: #4CC3D9; box-shadow: 0 0 12px rgba(76,195,217,0.4); }
+        .scene-card.dragging {
+            opacity: 0.9; cursor: grabbing;
+            transform: rotate(2deg) scale(1.04);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.6);
+            z-index: 9999;
+        }
+        .scene-card.drop-target {
+            border-color: #4CC3D9;
+            box-shadow: 0 0 18px rgba(76,195,217,0.7);
         }
 
-        .scene-card:hover { border-color: #4CC3D9; }
-        .scene-card.dragging { opacity: 0.4; }
-        .scene-card.active { border-color: #4CC3D9; box-shadow: 0 0 12px rgba(76,195,217,0.4); }
-
         .delete-btn {
-            position: absolute;
-            top: -5px; right: -5px;
+            position: absolute; top: -5px; right: -5px;
             width: 22px; height: 22px;
-            background: #ff4444;
-            color: white;
+            background: #ff4444; color: white;
             border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
             font-size: 12px; font-weight: bold;
-            cursor: pointer;
-            border: 2px solid #111;
-            z-index: 10;
-            opacity: 0;
+            cursor: pointer; border: 2px solid #111;
+            z-index: 10; opacity: 0;
             transition: opacity 0.2s;
         }
         .scene-card:hover .delete-btn { opacity: 1; }
 
         .thumbnail {
-            width: 100%; height: 90px;
-            object-fit: cover;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            background: #000;
-            pointer-events: none;
-            display: block;
+            width: 100%; height: 90px; object-fit: cover;
+            border-radius: 4px; margin-bottom: 8px;
+            background: #000; pointer-events: none; display: block;
         }
-        
-        .thumbnail.error {
-            border: 1px solid #ff4444;
-            position: relative;
-        }
+        .thumbnail.error { border: 1px solid #ff4444; position: relative; }
         .thumbnail.error::after {
             content: "⚠️ Fichier introuvable";
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; justify-content: center; align-items: center;
             color: #ff4444; font-size: 0.8rem; text-align: center;
             background: rgba(20,0,0,0.8);
-            white-space: pre-wrap;
         }
 
         .filename {
@@ -185,20 +123,18 @@
         }
 
         .order-badge {
-            position: absolute;
-            top: -10px; left: -10px;
+            position: absolute; top: -10px; left: -10px;
             background: #4CC3D9; color: #000;
-            width: 24px; height: 24px;
-            border-radius: 50%;
+            width: 24px; height: 24px; border-radius: 50%;
             font-size: 0.8rem; font-weight: bold;
             display: flex; justify-content: center; align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
         }
 
         #add-btn {
             width: 180px; height: 155px;
-            background: #1a1a1a;
-            border: 2px dashed #444;
+            background: #1a1a1a; border: 2px dashed #444;
             border-radius: 8px;
             display: flex; justify-content: center; align-items: center;
             cursor: pointer; font-size: 2.5rem; color: #444;
@@ -207,17 +143,11 @@
         
         #file-input, #import-input { display: none; }
 
-        /* --- Interface Miroir PC (visible sur PC quand le casque est en VR) --- */
-        /* Cette UI s'affiche sur le PC, JAMAIS dans le casque. */
-        /* Elle est utile quand l'utilisateur enlève le casque pour reprendre le contrôle. */
         #spectator-ui {
-            display: none;
-            position: fixed;
+            display: none; position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 200;
+            pointer-events: none; z-index: 200;
         }
-
         body.in-vr #spectator-ui { display: block; }
 
         #spectator-info {
@@ -225,77 +155,91 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 10px 25px; border-radius: 30px;
             font-size: 0.9rem; color: #4CC3D9; border: 1px solid #4CC3D9;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            letter-spacing: 1px; text-transform: uppercase;
         }
 
         #exit-vr-btn {
-            position: absolute; 
-            top: 30px; left: 30px;
-            background: rgba(255, 68, 68, 0.8);
-            color: white;
+            position: absolute; top: 30px; left: 30px;
+            background: rgba(255, 68, 68, 0.8); color: white;
             border: 2px solid #ff4444;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            pointer-events: auto;
-            transition: all 0.2s;
+            padding: 12px 20px; border-radius: 8px;
+            cursor: pointer; font-weight: bold; font-size: 1rem;
+            pointer-events: auto; transition: all 0.2s;
             display: flex; align-items: center; gap: 10px;
         }
         #exit-vr-btn:hover { background: #ff0000; transform: scale(1.05); }
 
         #vr-refresh-hint {
-            position: absolute;
-            top: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(243, 156, 18, 0.9);
-            color: #000;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
-            display: none;
+            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(243, 156, 18, 0.9); color: #000;
+            padding: 12px 24px; border-radius: 8px;
+            font-weight: bold; display: none;
         }
         #vr-refresh-hint.active { display: block; }
 
-        /* --- Bouton Retour Storyboard (UNIQUEMENT mode aperçu PC plein écran) --- */
         #preview-back-btn {
-            display: none;
-            position: fixed;
+            display: none; position: fixed;
             top: 20px; left: 20px;
-            background: rgba(76, 195, 217, 0.9);
-            color: #000;
+            background: rgba(76, 195, 217, 0.9); color: #000;
             border: 2px solid #4CC3D9;
-            padding: 10px 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.95rem;
-            font-family: inherit;
-            z-index: 250;
-            transition: all 0.2s;
-            align-items: center;
-            gap: 8px;
+            padding: 10px 18px; border-radius: 8px;
+            cursor: pointer; font-weight: bold;
+            font-size: 0.95rem; font-family: inherit;
+            z-index: 250; transition: all 0.2s;
+            align-items: center; gap: 8px;
         }
         #preview-back-btn:hover { background: #63e2f9; transform: scale(1.05); }
         #preview-back-btn svg { display: block; }
 
-        /* Affiché UNIQUEMENT en mode aperçu PC, ET PAS quand on est en VR */
-        body.preview-mode:not(.in-vr) #preview-back-btn { display: flex; }
+        body.preview-mode:not(.in-vr):not(.vr-paused) #preview-back-btn { display: flex; }
 
         #preview-help {
-            display: none;
-            position: fixed;
+            display: none; position: fixed;
             bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.6);
-            color: #aaa;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            z-index: 250;
-            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.6); color: #aaa;
+            padding: 8px 18px; border-radius: 20px;
+            font-size: 0.8rem; z-index: 250; letter-spacing: 1px;
         }
-        body.preview-mode:not(.in-vr) #preview-help { display: block; }
+        body.preview-mode:not(.in-vr):not(.vr-paused) #preview-help { display: block; }
+
+        /* === Overlay reprise VR (casque retiré) === */
+        #vr-resume-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.85), rgba(20,30,40,0.9));
+            z-index: 400; cursor: pointer;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s;
+        }
+        body.vr-paused #vr-resume-overlay { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 30px rgba(76,195,217,0.4); }
+            50% { box-shadow: 0 0 60px rgba(76,195,217,0.8); }
+        }
+        @keyframes bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .resume-content {
+            background: #1a1a1a; border: 3px solid #4CC3D9;
+            padding: 40px 50px; border-radius: 16px;
+            text-align: center; max-width: 500px;
+            animation: pulse-glow 2s infinite;
+        }
+        .resume-content .resume-icon { font-size: 4rem; margin-bottom: 10px; }
+        .resume-content h2 { color: #4CC3D9; margin: 10px 0 20px; font-weight: 400; }
+        .resume-content p { color: #ccc; font-size: 1.05rem; line-height: 1.5; margin-bottom: 25px; }
+        .resume-action {
+            background: #4CC3D9; color: #000;
+            padding: 14px 30px; border-radius: 8px;
+            font-weight: bold; font-size: 1.1rem;
+            display: inline-flex; align-items: center; gap: 12px;
+        }
+        .resume-action span:first-child { font-size: 1.5rem; animation: bob 1s infinite; }
 
         .a-enter-vr { display: none !important; }
     </style>
@@ -307,18 +251,16 @@
         <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
     </div>
 
-    <!-- Interface Miroir PC (s'affiche sur l'écran PC quand on est en VR) -->
     <div id="spectator-ui">
-        <button id="exit-vr-btn" title="Quitter la VR (visible sur PC)">
+        <button id="exit-vr-btn" title="Quitter la VR">
             <span>⬅</span> <span data-i18n="back_storyboard_vr">Retour Storyboard</span>
         </button>
         <div id="vr-refresh-hint" data-i18n="refresh_hint">⚠️ Appuyez sur A / X pour rafraîchir</div>
         <div id="spectator-info">
-            <span data-i18n="spectator_info">Miroir PC du casque</span>
+            <span data-i18n="spectator_info">Miroir PC du casque (en direct)</span>
         </div>
     </div>
 
-    <!-- Bouton Retour Storyboard (UNIQUEMENT mode aperçu PC plein écran) -->
     <button id="preview-back-btn" title="Retour au storyboard">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="9 14 4 9 9 4"></polyline>
@@ -329,7 +271,18 @@
 
     <div id="preview-help" data-i18n="preview_help">← → naviguer · Échap pour quitter</div>
 
-    <!-- Interface Storyboard (Gestion sur PC) -->
+    <div id="vr-resume-overlay">
+        <div class="resume-content">
+            <div class="resume-icon">🥽</div>
+            <h2 data-i18n="vr_paused_title">Casque retiré — VR en pause</h2>
+            <p data-i18n="vr_paused_help">Remets le casque sur ta tête, puis clique n'importe où pour reprendre la session VR.</p>
+            <div class="resume-action">
+                <span>👆</span>
+                <span data-i18n="vr_paused_click">Cliquer pour reprendre</span>
+            </div>
+        </div>
+    </div>
+
     <div id="ui-layer">
         <div class="header">
             <h1 data-i18n="title">Visualiseur de maquette XR</h1>
@@ -352,8 +305,9 @@
         </div>
     </div>
 
-    <!-- Scène 3D -->
-    <a-scene background="color: #000" vr-mode-ui="enabled: true" renderer="antialias: true; highRefreshRate: true; colorManagement: true;">
+    <a-scene background="color: #000" vr-mode-ui="enabled: true" 
+             renderer="antialias: true; highRefreshRate: true; colorManagement: true;"
+             spectator-mirror>
         <a-assets id="assets-manager" timeout="30000"></a-assets>
         <a-sky id="sky-360" radius="500" rotation="0 -90 0" material="shader: flat; color: #FFF; side: back"></a-sky>
         <a-entity id="rig">
@@ -364,7 +318,6 @@
     </a-scene>
 
     <script>
-        // ===== TRADUCTIONS =====
         const translations = {
             fr: { 
                 title: "Visualiseur de maquette XR", 
@@ -373,46 +326,48 @@
                 storyboard_short: "Storyboard",
                 preview_btn: "👁 Aperçu PC plein écran",
                 preview_help: "← → naviguer · Échap pour quitter",
-                spectator_info: "Miroir PC du casque (enlevez le casque pour utiliser le bouton)", 
+                spectator_info: "Miroir PC du casque (en direct)", 
                 export_btn: "Exporter Configuration", 
                 import_btn: "Importer Configuration", 
                 alert_no_image: "Veuillez ajouter des images.", 
                 alert_import_fail: "Échec de l'importation : fichier JSON invalide.",
                 refresh_hint: "⚠️ Appuyez sur A / X pour rafraîchir l'image",
-                encoding: "Encodage de l'image",
-                of: "sur"
+                encoding: "Encodage de l'image", of: "sur",
+                vr_paused_title: "Casque retiré — VR en pause",
+                vr_paused_help: "Remets le casque sur ta tête, puis clique n'importe où pour reprendre la session VR.",
+                vr_paused_click: "Cliquer pour reprendre"
             },
             en: { 
-                title: "XR Mockup Viewer", 
-                vr_button: "Switch to Headset", 
+                title: "XR Mockup Viewer", vr_button: "Switch to Headset", 
                 back_storyboard_vr: "Back to Storyboard",
                 storyboard_short: "Storyboard",
                 preview_btn: "👁 PC Fullscreen Preview",
                 preview_help: "← → navigate · Esc to exit",
-                spectator_info: "PC Mirror of headset (remove headset to use button)", 
-                export_btn: "Export Config", 
-                import_btn: "Import Config", 
+                spectator_info: "Live PC Mirror of Headset", 
+                export_btn: "Export Config", import_btn: "Import Config", 
                 alert_no_image: "Please add images first.", 
                 alert_import_fail: "Import failed: invalid JSON file.",
                 refresh_hint: "⚠️ Press A / X to refresh image",
-                encoding: "Encoding image",
-                of: "of"
+                encoding: "Encoding image", of: "of",
+                vr_paused_title: "Headset removed — VR paused",
+                vr_paused_help: "Put the headset back on, then click anywhere to resume the VR session.",
+                vr_paused_click: "Click to resume"
             },
             es: { 
-                title: "Visualizador de Maqueta XR", 
-                vr_button: "Cambiar al Casco", 
+                title: "Visualizador de Maqueta XR", vr_button: "Cambiar al Casco", 
                 back_storyboard_vr: "Volver al Storyboard",
                 storyboard_short: "Storyboard",
                 preview_btn: "👁 Vista PC pantalla completa",
                 preview_help: "← → navegar · Esc para salir",
-                spectator_info: "Espejo PC del casco (quítate el casco para usar el botón)", 
-                export_btn: "Exportar Config", 
-                import_btn: "Importar Config", 
+                spectator_info: "Espejo PC en directo", 
+                export_btn: "Exportar Config", import_btn: "Importar Config", 
                 alert_no_image: "Por favor, añade imágenes.", 
                 alert_import_fail: "Error al importar: archivo JSON no válido.",
                 refresh_hint: "⚠️ Presiona A / X para refrescar",
-                encoding: "Codificando imagen",
-                of: "de"
+                encoding: "Codificando imagen", of: "de",
+                vr_paused_title: "Casco retirado — VR en pausa",
+                vr_paused_help: "Vuelve a colocarte el casco y haz clic en cualquier lugar para reanudar la sesión VR.",
+                vr_paused_click: "Haz clic para reanudar"
             }
         };
 
@@ -426,10 +381,9 @@
         }
         document.getElementById('lang-select').addEventListener('change', (e) => updateLanguage(e.target.value));
 
-        // ===== ÉTAT GLOBAL =====
         let scenes = []; 
         let currentIndex = 0;
-        let dragSrcEl = null;
+        let userInitiatedVRExit = false;
 
         const sky = document.getElementById('sky-360');
         const grid = document.getElementById('scene-grid');
@@ -438,7 +392,6 @@
         const sceneEl = document.querySelector('a-scene');
         const refreshHint = document.getElementById('vr-refresh-hint');
 
-        // ===== AJOUT MANUEL D'IMAGES =====
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             files.forEach(file => {
@@ -457,7 +410,6 @@
             img.src = scene.url;
             img.crossOrigin = "anonymous";
             img.onerror = function() {
-                console.error("Erreur chargement: " + this.src);
                 const cardImg = document.querySelector(`.scene-card[data-id='${scene.id}'] .thumbnail`);
                 if(cardImg) cardImg.classList.add('error');
             };
@@ -466,32 +418,119 @@
             updateBadges();
         }
 
+        // === CARTES AVEC POINTER EVENTS (compatible souris + manettes Oculus) ===
         function createCard(scene) {
             const card = document.createElement('div');
             card.className = 'scene-card';
-            card.draggable = true;
             card.dataset.id = scene.id;
-            const imgHtml = `<img src="${scene.url}" class="thumbnail" onerror="this.classList.add('error')">`;
-            card.innerHTML = `<div class="order-badge"></div><div class="delete-btn">X</div>${imgHtml}<div class="filename">${scene.name}</div>`;
-            card.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); removeScene(scene.id); });
-            card.addEventListener('click', () => {
-                const idx = scenes.findIndex(s => s.id == scene.id);
-                if (idx !== -1) loadScene(idx);
+            
+            card.innerHTML = `<div class="order-badge"></div><div class="delete-btn">X</div><img src="${scene.url}" class="thumbnail" onerror="this.classList.add('error')"><div class="filename">${scene.name}</div>`;
+            
+            card.querySelector('.delete-btn').addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                removeScene(scene.id); 
             });
-            card.addEventListener('dragstart', (e) => { dragSrcEl = card; card.classList.add('dragging'); });
-            card.addEventListener('dragover', (e) => { e.preventDefault(); return false; });
-            card.addEventListener('drop', handleDrop);
-            card.addEventListener('dragend', () => card.classList.remove('dragging'));
+            
+            let pStartX = 0, pStartY = 0;
+            let dragOffsetX = 0, dragOffsetY = 0;
+            let isDragging = false;
+            let activePointerId = null;
+            
+            card.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('.delete-btn')) return;
+                pStartX = e.clientX; pStartY = e.clientY;
+                const rect = card.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                isDragging = false;
+                activePointerId = e.pointerId;
+                try { card.setPointerCapture(e.pointerId); } catch(err) {}
+                e.preventDefault();
+            });
+            
+            card.addEventListener('pointermove', (e) => {
+                if (e.pointerId !== activePointerId) return;
+                const dx = e.clientX - pStartX;
+                const dy = e.clientY - pStartY;
+                
+                if (!isDragging && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+                    isDragging = true;
+                    card.classList.add('dragging');
+                    card.style.position = 'fixed';
+                    card.style.width = card.offsetWidth + 'px';
+                }
+                
+                if (isDragging) {
+                    card.style.left = (e.clientX - dragOffsetX) + 'px';
+                    card.style.top = (e.clientY - dragOffsetY) + 'px';
+                    
+                    card.style.pointerEvents = 'none';
+                    const elsBelow = document.elementsFromPoint(e.clientX, e.clientY);
+                    card.style.pointerEvents = '';
+                    
+                    document.querySelectorAll('.scene-card.drop-target').forEach(c => c.classList.remove('drop-target'));
+                    const targetCard = elsBelow.find(el => 
+                        el.classList && el.classList.contains('scene-card') && el !== card
+                    );
+                    if (targetCard) targetCard.classList.add('drop-target');
+                }
+            });
+            
+            card.addEventListener('pointerup', (e) => {
+                if (e.pointerId !== activePointerId) return;
+                try { card.releasePointerCapture(e.pointerId); } catch(err) {}
+                activePointerId = null;
+                
+                if (isDragging) {
+                    card.style.pointerEvents = 'none';
+                    const elsBelow = document.elementsFromPoint(e.clientX, e.clientY);
+                    card.style.pointerEvents = '';
+                    
+                    const targetCard = elsBelow.find(el => 
+                        el.classList && el.classList.contains('scene-card') && el !== card
+                    );
+                    
+                    card.classList.remove('dragging');
+                    card.style.position = '';
+                    card.style.left = '';
+                    card.style.top = '';
+                    card.style.width = '';
+                    
+                    if (targetCard) {
+                        const cards = [...document.querySelectorAll('.scene-card')];
+                        const targetIdx = cards.indexOf(targetCard);
+                        const myIdx = cards.indexOf(card);
+                        if (myIdx < targetIdx) {
+                            targetCard.parentNode.insertBefore(card, targetCard.nextSibling);
+                        } else {
+                            targetCard.parentNode.insertBefore(card, targetCard);
+                        }
+                        updateOrder();
+                    }
+                    
+                    document.querySelectorAll('.scene-card.drop-target').forEach(c => c.classList.remove('drop-target'));
+                    isDragging = false;
+                } else {
+                    const idx = scenes.findIndex(s => s.id == scene.id);
+                    if (idx !== -1) loadScene(idx);
+                }
+            });
+            
+            card.addEventListener('pointercancel', (e) => {
+                if (e.pointerId !== activePointerId) return;
+                activePointerId = null;
+                if (isDragging) {
+                    card.classList.remove('dragging');
+                    card.style.position = '';
+                    card.style.left = '';
+                    card.style.top = '';
+                    card.style.width = '';
+                    isDragging = false;
+                }
+                document.querySelectorAll('.scene-card.drop-target').forEach(c => c.classList.remove('drop-target'));
+            });
+            
             grid.insertBefore(card, document.getElementById('add-btn'));
-        }
-
-        function handleDrop(e) {
-            if (dragSrcEl !== this) {
-                const all = [...document.querySelectorAll('.scene-card')];
-                if (all.indexOf(dragSrcEl) < all.indexOf(this)) this.parentNode.insertBefore(dragSrcEl, this.nextSibling);
-                else this.parentNode.insertBefore(dragSrcEl, this);
-                updateOrder();
-            }
         }
 
         function removeScene(id) {
@@ -545,11 +584,9 @@
             highlightActive();
         }
 
-        // ===== NAVIGATION CLAVIER =====
         document.addEventListener('keydown', (e) => {
-            if (e.key === "Escape" && document.body.classList.contains('preview-mode')) {
-                exitPreviewMode();
-                return;
+            if (e.key === "Escape" && document.body.classList.contains('preview-mode') && !document.body.classList.contains('vr-paused')) {
+                exitPreviewMode(); return;
             }
             if (scenes.length === 0) return;
             if (e.key === "ArrowRight") loadScene(currentIndex + 1);
@@ -557,7 +594,6 @@
             else if (e.key === "r" || e.key === "R") forceSkyRefresh();
         });
 
-        // ===== MODE APERÇU PC PLEIN ÉCRAN =====
         function enterPreviewMode() {
             if (scenes.length === 0) return alert(translations[currentLang].alert_no_image);
             document.body.classList.add('preview-mode');
@@ -570,18 +606,13 @@
         document.getElementById('preview-pc-btn').addEventListener('click', enterPreviewMode);
         document.getElementById('preview-back-btn').addEventListener('click', exitPreviewMode);
 
-        // ===== BUG #1 — EXPORT/IMPORT BASE64 =====
         function showProgress(label) {
             document.getElementById('progress-label').textContent = label;
             document.getElementById('progress-fill').style.width = '0%';
             document.getElementById('export-progress').classList.add('active');
         }
-        function updateProgress(percent) {
-            document.getElementById('progress-fill').style.width = percent + '%';
-        }
-        function hideProgress() {
-            document.getElementById('export-progress').classList.remove('active');
-        }
+        function updateProgress(p) { document.getElementById('progress-fill').style.width = p + '%'; }
+        function hideProgress() { document.getElementById('export-progress').classList.remove('active'); }
 
         async function imageToBase64(url) {
             const response = await fetch(url);
@@ -638,9 +669,7 @@
             const blob = new Blob([content], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
+            a.href = url; a.download = filename; a.click();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
@@ -685,14 +714,12 @@
                     try { URL.revokeObjectURL(s.url); } catch(e) {}
                 }
             });
-            scenes = [];
-            currentIndex = 0;
+            scenes = []; currentIndex = 0;
             document.querySelectorAll('.scene-card').forEach(c => c.remove());
             document.getElementById('assets-manager').innerHTML = '';
             sky.removeAttribute('src');
         }
 
-        // ===== BUG #2 — RAFRAÎCHISSEMENT VR APRÈS ENLÈVEMENT DU CASQUE =====
         function forceSkyRefresh() {
             if (scenes.length === 0) return;
             const scene = scenes[currentIndex];
@@ -738,27 +765,84 @@
             }
         });
 
-        document.getElementById('enter-vr-btn').addEventListener('click', () => {
-            if(scenes.length === 0) return alert(translations[currentLang].alert_no_image);
-            // Si on était en aperçu PC, on quitte d'abord
-            if (document.body.classList.contains('preview-mode')) exitPreviewMode();
-            sceneEl.enterVR();
+        // === MIROIR PC LIVE PENDANT VR (caméra spectateur, ~30 fps) ===
+        AFRAME.registerComponent('spectator-mirror', {
+            init: function() {
+                this.specCamera = null;
+                this.lastRender = 0;
+            },
+            tick: function() {
+                const sceneEl = this.el;
+                if (!sceneEl.is('vr-mode')) return;
+                const renderer = sceneEl.renderer;
+                if (!renderer || !renderer.xr || !renderer.xr.isPresenting) return;
+                
+                const now = performance.now();
+                if (now - this.lastRender < 33) return;
+                this.lastRender = now;
+                
+                try {
+                    if (!this.specCamera) {
+                        this.specCamera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 2000);
+                    } else {
+                        const aspect = window.innerWidth / window.innerHeight;
+                        if (Math.abs(this.specCamera.aspect - aspect) > 0.01) {
+                            this.specCamera.aspect = aspect;
+                            this.specCamera.updateProjectionMatrix();
+                        }
+                    }
+                    
+                    const xrCamera = renderer.xr.getCamera();
+                    if (!xrCamera.cameras || xrCamera.cameras.length === 0) return;
+                    const eye = xrCamera.cameras[0];
+                    eye.getWorldPosition(this.specCamera.position);
+                    eye.getWorldQuaternion(this.specCamera.quaternion);
+                    
+                    const wasXR = renderer.xr.enabled;
+                    renderer.xr.enabled = false;
+                    renderer.render(sceneEl.object3D, this.specCamera);
+                    renderer.xr.enabled = wasXR;
+                } catch(err) {
+                    // silencieux
+                }
+            }
         });
 
+        function enterVRSession() {
+            if(scenes.length === 0) return alert(translations[currentLang].alert_no_image);
+            if (document.body.classList.contains('preview-mode')) {
+                document.body.classList.remove('preview-mode');
+            }
+            document.body.classList.remove('vr-paused');
+            sceneEl.enterVR();
+        }
+
+        document.getElementById('enter-vr-btn').addEventListener('click', enterVRSession);
+
+        // Sortie volontaire (clic explicite "Retour Storyboard" sur le miroir PC)
         document.getElementById('exit-vr-btn').addEventListener('click', () => {
+            userInitiatedVRExit = true;
             sceneEl.exitVR();
+        });
+
+        // Overlay reprise : un clic n'importe où relance la VR
+        document.getElementById('vr-resume-overlay').addEventListener('click', () => {
+            document.body.classList.remove('vr-paused');
+            sceneEl.enterVR();
         });
 
         let xrVisibilityHandler = null;
 
         sceneEl.addEventListener('enter-vr', () => {
             document.body.classList.add('in-vr');
+            document.body.classList.remove('vr-paused');
+            userInitiatedVRExit = false;
             if (scenes.length > 0) loadScene(currentIndex);
+            
             const xrSession = sceneEl.renderer.xr.getSession();
             if (xrSession) {
                 xrVisibilityHandler = (event) => {
                     const state = event.session.visibilityState;
-                    console.log('[XR] Visibility changed:', state);
                     if (state === 'visible') {
                         refreshHint.textContent = translations[currentLang].refresh_hint;
                         refreshHint.classList.add('active');
@@ -775,11 +859,20 @@
         sceneEl.addEventListener('exit-vr', () => {
             document.body.classList.remove('in-vr');
             refreshHint.classList.remove('active');
+            
             const xrSession = sceneEl.renderer.xr.getSession();
             if (xrSession && xrVisibilityHandler) {
                 try { xrSession.removeEventListener('visibilitychange', xrVisibilityHandler); } catch(e) {}
             }
             xrVisibilityHandler = null;
+            
+            // Si la sortie n'est PAS volontaire → casque retiré → overlay reprise
+            if (!userInitiatedVRExit && scenes.length > 0) {
+                document.body.classList.add('preview-mode');
+                document.body.classList.add('vr-paused');
+            }
+            userInitiatedVRExit = false;
+            
             window.dispatchEvent(new Event('resize'));
             const canvas = sceneEl.canvas;
             if(canvas) {
